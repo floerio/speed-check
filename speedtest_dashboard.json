@@ -1,0 +1,272 @@
+{
+  "title": "Speed Test Monitor",
+  "uid": "speedtest-monitor",
+  "tags": ["speedtest", "network"],
+  "timezone": "",
+  "schemaVersion": 30,
+  "version": 5,
+  "refresh": "1m",
+  "panels": [
+    {
+      "title": "Download Speed",
+      "type": "timeseries",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "P1DED9D3A955C8195"
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT timestamp as time, download/1000000.0 as value FROM results WHERE timestamp >= $__from/1000 AND timestamp <= $__to/1000 ORDER BY timestamp",
+          "refId": "A",
+          "format": "time_series"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": ["mean", "lastNotNull", "max", "min"]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "title": "Upload Speed",
+      "type": "timeseries",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "P1DED9D3A955C8195"
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT timestamp as time, upload/1000000.0 as value FROM results WHERE timestamp >= $__from/1000 AND timestamp <= $__to/1000 ORDER BY timestamp",
+          "refId": "A",
+          "format": "time_series"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": ["mean", "lastNotNull", "max", "min"]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      }
+    },
+    {
+      "title": "Ping (Latency)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "P1DED9D3A955C8195"
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT timestamp as time, ping as value FROM results WHERE timestamp >= $__from/1000 AND timestamp <= $__to/1000 ORDER BY timestamp",
+          "refId": "A",
+          "format": "time_series"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": ["mean", "lastNotNull", "max", "min"]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      }
+    },
+    {
+      "title": "Download",
+      "type": "stat",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "P1DED9D3A955C8195"
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT download/1000000.0 as value FROM results ORDER BY timestamp DESC LIMIT 1",
+          "refId": "A",
+          "format": "table"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "text": {
+          "titleSize": 20,
+          "valueSize": 40
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 8
+      }
+    },
+    {
+      "title": "Upload",
+      "type": "stat",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "P1DED9D3A955C8195"
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT upload/1000000.0 as value FROM results ORDER BY timestamp DESC LIMIT 1",
+          "refId": "A",
+          "format": "table"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "text": {
+          "titleSize": 20,
+          "valueSize": 40
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 8
+      }
+    },
+    {
+      "title": "Ping",
+      "type": "stat",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "P1DED9D3A955C8195"
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT ping as value FROM results ORDER BY timestamp DESC LIMIT 1",
+          "refId": "A",
+          "format": "table"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "text": {
+          "titleSize": 20,
+          "valueSize": 40
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 16
+      }
+    }
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timeRange": {
+    "from": "now-1h",
+    "to": "now"
+  }
+}
