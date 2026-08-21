@@ -75,30 +75,55 @@ python speed_test.py
 # 5. Set file permissions
 sudo chown admin:speedtest /opt/speed-check/data/speedtest.db
 sudo chmod 660 /opt/speed-check/data/speedtest.db
-
-# 6. Restart Grafana to pick up group changes
-sudo systemctl restart grafana-server
 ```
 
 > **Why this matters:** Grafana v8.2.0+ runs with `PrivateTmp=true` by default, which isolates `/var`, `/tmp`, and other system directories. The `/opt/` directory is NOT isolated and remains accessible. See: https://github.com/fr-ser/grafana-sqlite-datasource/blob/main/docs/faq.md
 
-## 📊 Step 4: Configure SQLite Datasource in Grafana
+## 📄 Step 4: Configure Provisioning File
+
+To ensure your datasource persists across reboots, configure it via provisioning:
+
+```bash
+# Create provisioning file with correct permissions
+sudo bash -c 'cat > /etc/grafana/provisioning/datasources/sqlite.yaml << "EOF"
+apiVersion: 1
+
+datasources:
+  - name: SpeedTest SQLite
+    uid: P1DED9D3A955C8195
+    type: frser-sqlite-datasource
+    access: proxy
+    orgId: 1
+    isDefault: true
+    editable: true
+    jsonData:
+      path: /opt/speed-check/data/speedtest.db
+EOF'
+
+# Set ownership so Grafana can read it
+sudo chown grafana:grafana /etc/grafana/provisioning/datasources/sqlite.yaml
+sudo chmod 644 /etc/grafana/provisioning/datasources/sqlite.yaml
+```
+
+> **⚠️ CRITICAL NOTES:**
+> - Use **`path:`** not `database:` - the frser-sqlite-datasource plugin expects `path` in jsonData
+> - Include the **UID** to ensure Grafana updates the existing datasource instead of creating a duplicate
+> - The file **must be readable** by the Grafana user (grafana:grafana)
+
+## 📊 Step 5: Configure SQLite Datasource in Grafana
 
 1. Log in to Grafana (`http://<your-pi-ip>:3000`)
 2. Go to **Configuration** → **Data Sources**
-3. Click **"Add data source"**
-4. Search for and select **"SQLite"**
-5. Configure the datasource:
-   - **Name:** `SpeedTest SQLite` (or any name you prefer)
+3. Your datasource **"SpeedTest SQLite"** should appear automatically from provisioning
+4. Click on it to verify:
    - **Path:** `/opt/speed-check/data/speedtest.db` (full absolute path)
    - **Path Prefix:** **(leave EMPTY - do NOT use `file:`)**
    - **Path Options:** `?_pragma=query_only(1)` **OR leave empty** (plugin adds it automatically)
    - **Access:** Proxy
-   - Click **"Save & Test"**
 
 > **⚠️ CRITICAL:** If you use Path Options, you **MUST** include the `?` prefix (e.g., `?_pragma=query_only(1)`). Without it, the plugin will look for a file named `speedtest.db_pragma=query_only(1)` which doesn't exist, resulting in the error: "no file exists at the file path".
 
-## 📈 Step 5: Create a Dashboard
+## 📈 Step 6: Create a Dashboard
 
 ### Option A: Import the Pre-made Dashboard
 1. In Grafana: **+ → Import**
@@ -147,6 +172,12 @@ sudo systemctl restart grafana-server
   sudo -u grafana sqlite3 /opt/speed-check/data/speedtest.db 'SELECT COUNT(*) FROM results;'
   ```
   If this fails, check permissions and group membership.
+
+- **Verify provisioning file permissions:**
+  ```bash
+  ls -la /etc/grafana/provisioning/datasources/sqlite.yaml
+  ```
+  Should show: `-rw-r--r-- 1 grafana grafana ...`
 
 - **Reduce Grafana memory usage:** Edit `/etc/grafana/grafana.ini` and set:
   ```
