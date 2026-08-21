@@ -5,6 +5,8 @@ Visualize your speed test data from SQLite in Grafana using the **official** SQL
 
 > **⚠️ IMPORTANT:** This guide uses the **frser-sqlite-datasource** plugin, which is the actively maintained and officially recommended plugin. Do NOT use `marcusolsson-sqlite-datasource` as it is deprecated.
 
+> **⚠️ CRITICAL:** Do NOT use `/var/` for your database with Grafana v8.2.0+ due to systemd PrivateTmp isolation. Use `/opt/` instead.
+
 ## ✅ Prerequisites
 - Raspberry Pi 3B+ running Raspberry Pi OS
 - Your speed test script (`speed_test.py`) already configured
@@ -52,7 +54,7 @@ sudo systemctl start grafana-server
 
 ## ⚙️ Step 3: Set Up Database Directory
 
-**⚠️ CRITICAL:** Do this BEFORE configuring Grafana. The `/var/lib/grafana/databases/` directory is NOT standard and will not persist across reboots.
+**⚠️ CRITICAL:** Do NOT use `/var/` with Grafana v8.2.0+ due to systemd PrivateTmp isolation. Use `/opt/` instead.
 
 ```bash
 # 1. Create dedicated group for the database
@@ -62,8 +64,8 @@ sudo groupadd --system speedtest
 sudo usermod -aG speedtest grafana
 sudo usermod -aG speedtest admin
 
-# 3. Create directory with proper permissions
-sudo install -d -o admin -g speedtest -m 2770 /var/lib/speed-check/data
+# 3. Create directory with proper permissions (NOT in /var)
+sudo install -d -o admin -g speedtest -m 2770 /opt/speed-check/data
 
 # 4. Run your script once to create the database
 cd /home/admin/speed-check
@@ -71,14 +73,14 @@ source .venv/bin/activate
 python speed_test.py
 
 # 5. Set file permissions
-sudo chown admin:speedtest /var/lib/speed-check/data/speedtest.db
-sudo chmod 660 /var/lib/speed-check/data/speedtest.db
+sudo chown admin:speedtest /opt/speed-check/data/speedtest.db
+sudo chmod 660 /opt/speed-check/data/speedtest.db
 
 # 6. Restart Grafana to pick up group changes
 sudo systemctl restart grafana-server
 ```
 
-> **Why this matters:** This follows the [official plugin recommendations](https://github.com/fr-ser/grafana-sqlite-datasource/blob/main/docs/faq.md) which state: "Avoid storing the file under `/home/...`; systemd hardening can prevent Grafana from accessing home directories. Moving the file under `/var/lib` or `/opt` is safer and simpler."
+> **Why this matters:** Grafana v8.2.0+ runs with `PrivateTmp=true` by default, which isolates `/var`, `/tmp`, and other system directories. The `/opt/` directory is NOT isolated and remains accessible. See: https://github.com/fr-ser/grafana-sqlite-datasource/blob/main/docs/faq.md
 
 ## 📊 Step 4: Configure SQLite Datasource in Grafana
 
@@ -88,7 +90,7 @@ sudo systemctl restart grafana-server
 4. Search for and select **"SQLite"**
 5. Configure the datasource:
    - **Name:** `SpeedTest SQLite` (or any name you prefer)
-   - **Path:** `/var/lib/speed-check/data/speedtest.db` (full absolute path)
+   - **Path:** `/opt/speed-check/data/speedtest.db` (full absolute path)
    - **Path Prefix:** **(leave EMPTY - do NOT use `file:`)**
    - **Path Options:** `?_pragma=query_only(1)` **OR leave empty** (plugin adds it automatically)
    - **Access:** Proxy
@@ -142,7 +144,7 @@ sudo systemctl restart grafana-server
 
 - **Verify Grafana can access the database:**
   ```bash
-  sudo -u grafana sqlite3 /var/lib/speed-check/data/speedtest.db 'SELECT COUNT(*) FROM results;'
+  sudo -u grafana sqlite3 /opt/speed-check/data/speedtest.db 'SELECT COUNT(*) FROM results;'
   ```
   If this fails, check permissions and group membership.
 
@@ -174,7 +176,7 @@ crontab -e
 */15 * * * * cd /home/admin/speed-check && /home/admin/speed-check/.venv/bin/python speed_test.py
 ```
 
-> **Note:** The cron job runs as your user (admin), which is in the `speedtest` group, so it can write to `/var/lib/speed-check/data/speedtest.db`.
+> **Note:** The cron job runs as your user (admin), which is in the `speedtest` group, so it can write to `/opt/speed-check/data/speedtest.db`.
 
 ## 📚 Resources
 - **Official Plugin:** https://grafana.com/grafana/plugins/frser-sqlite-datasource/
