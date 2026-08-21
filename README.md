@@ -63,7 +63,9 @@ See **[grafana_setup.md](grafana_setup.md)** for complete installation and confi
 
 ## 📊 Database Schema
 
-**Location:** `/var/lib/grafana/databases/speedtest.db`
+**Location:** `/var/lib/speed-check/data/speedtest.db`
+
+> **Important:** This follows the [official Grafana SQLite plugin recommendations](https://github.com/fr-ser/grafana-sqlite-datasource/blob/main/docs/faq.md). Do NOT use `/var/lib/grafana/databases/` as it is not a standard Grafana directory and will not persist across reboots.
 
 | Column | Type | Description | Unit |
 |--------|------|-------------|------|
@@ -147,7 +149,7 @@ speed-check/
 ├── speedtest_dashboard.json # Grafana dashboard template
 └── speedtest.db            # Local SQLite (reference only)
 
-/var/lib/grafana/databases/speedtest.db  # Active database for Grafana
+/var/lib/speed-check/data/speedtest.db  # Active database for Grafana
 ```
 
 ---
@@ -157,15 +159,26 @@ speed-check/
 ### Datasource Configuration
 - **Name:** SpeedTest SQLite
 - **Type:** `frser-sqlite-datasource`
-- **Path:** `/var/lib/grafana/databases/speedtest.db`
+- **Path:** `/var/lib/speed-check/data/speedtest.db`
+- **Path Prefix:** (leave empty)
+- **Path Options:** `?_pragma=query_only(1)` or leave empty (plugin adds it automatically)
 - **Access:** Proxy
 
-### Database Permissions
+### Database Setup
 ```bash
-# Ensure Grafana can read the database
-sudo chown admin:grafana /var/lib/grafana/databases/speedtest.db
-sudo chmod 664 /var/lib/grafana/databases/speedtest.db
-sudo chmod 775 /var/lib/grafana/databases/
+# 1. Create dedicated group for the database
+sudo groupadd --system speedtest
+
+# 2. Add both users to the group
+sudo usermod -aG speedtest grafana
+sudo usermod -aG speedtest admin
+
+# 3. Create directory with proper permissions
+sudo install -d -o admin -g speedtest -m 2770 /var/lib/speed-check/data
+
+# 4. Set file permissions (after first run)
+sudo chown admin:speedtest /var/lib/speed-check/data/speedtest.db
+sudo chmod 660 /var/lib/speed-check/data/speedtest.db
 ```
 
 ---
@@ -189,7 +202,7 @@ The dashboard includes:
 ### Check Data
 ```bash
 source .venv/bin/activate
-python -c "import sqlite3; conn = sqlite3.connect('/var/lib/grafana/databases/speedtest.db'); cursor = conn.cursor(); cursor.execute('SELECT count(*), min(timestamp), max(timestamp) FROM results'); print(cursor.fetchone()); conn.close()"
+python -c "import sqlite3; conn = sqlite3.connect('/var/lib/speed-check/data/speedtest.db'); cursor = conn.cursor(); cursor.execute('SELECT count(*), min(timestamp), max(timestamp) FROM results'); print(cursor.fetchone()); conn.close()"
 ```
 
 ### Manual Test
@@ -203,8 +216,19 @@ python speed_test.py
 ```bash
 # Delete data older than 30 days
 source .venv/bin/activate
-python -c "import sqlite3; from datetime import datetime, timedelta; conn = sqlite3.connect('/var/lib/grafana/databases/speedtest.db'); cursor = conn.cursor(); cutoff = int((datetime.now() - timedelta(days=30)).timestamp()); cursor.execute('DELETE FROM results WHERE timestamp < ?', (cutoff,)); conn.commit(); conn.close(); print('Old data cleaned')"
+python -c "import sqlite3; from datetime import datetime, timedelta; conn = sqlite3.connect('/var/lib/speed-check/data/speedtest.db'); cursor = conn.cursor(); cutoff = int((datetime.now() - timedelta(days=30)).timestamp()); cursor.execute('DELETE FROM results WHERE timestamp < ?', (cutoff,)); conn.commit(); conn.close(); print('Old data cleaned')"
 ```
+
+---
+
+## 🔄 Changelog
+- **v1.0**: Initial setup with MySQL
+- **v2.0**: Switched to SQLite
+- **v3.0**: Fixed datetime deprecation warning
+- **v4.0**: Added Grafana integration
+- **v5.0**: Fixed timezone issues with Unix timestamps in seconds
+- **v6.0**: Added automated cron job (every 15 minutes)
+- **v7.0**: Fixed database path to `/var/lib/speed-check/data/speedtest.db` following [official Grafana SQLite plugin recommendations](https://github.com/fr-ser/grafana-sqlite-datasource/blob/main/docs/faq.md). Added proper group-based permissions (speedtest group) and corrected Path Options format (requires `?` prefix). Removed reference to non-standard `/var/lib/grafana/databases/` directory.
 
 ---
 
@@ -224,4 +248,4 @@ Pull requests are welcome! For major changes, please open an issue first to disc
 
 - [speedtest-cli](https://github.com/sivel/speedtest-cli) - Speed test library
 - [Grafana](https://grafana.com/) - Visualization platform
-- [frser-sqlite-datasource](https://github.com/fr-ser/grafana-sqlite-datasource) - SQLite plugin for Grafana
+- [frser-sqlite-datasource](https://github.com/fr-ser/grafana-sqlite-datasource) - Official SQLite plugin for Grafana (recommended)

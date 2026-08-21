@@ -3,7 +3,7 @@ import sqlite3
 from datetime import datetime
 
 # Initialize SQLite database (location accessible by Grafana)
-DB_PATH = '/var/lib/grafana/databases/speedtest.db'
+DB_PATH = '/var/lib/speed-check/data/speedtest.db'
 conn = sqlite3.connect(DB_PATH)
 cursor = conn.cursor()
 

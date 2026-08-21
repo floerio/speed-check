@@ -20,7 +20,7 @@ speed-check/
 ├── grafana_setup.md        # Grafana installation guide
 └── project.md              # This file
 
-/var/lib/grafana/databases/speedtest.db  # Active database for Grafana
+/var/lib/speed-check/data/speedtest.db  # Active database for Grafana
 ```
 
 ## ⚙️ Setup Instructions
@@ -38,7 +38,24 @@ See `grafana_setup.md` for complete instructions.
 ### 3. Configure Datasource
 - Grafana datasource: **SpeedTest SQLite**
 - Type: `frser-sqlite-datasource`
-- Path: `/var/lib/grafana/databases/speedtest.db`
+- Path: `/var/lib/speed-check/data/speedtest.db`
+- Path Prefix: (leave empty)
+- Path Options: `?_pragma=query_only(1)` or leave empty
+
+### Database Directory Setup
+Before running the script, set up the database directory:
+
+```bash
+# Create dedicated group
+sudo groupadd --system speedtest
+
+# Add users to group
+sudo usermod -aG speedtest grafana
+sudo usermod -aG speedtest admin
+
+# Create directory
+sudo install -d -o admin -g speedtest -m 2770 /var/lib/speed-check/data
+```
 
 ### 4. Import Dashboard
 - In Grafana: **+ → Import**
@@ -47,7 +64,9 @@ See `grafana_setup.md` for complete instructions.
 
 ## 📊 Database Schema
 
-**Location:** `/var/lib/grafana/databases/speedtest.db`
+**Location:** `/var/lib/speed-check/data/speedtest.db`
+
+> **Important:** This follows the [official Grafana SQLite plugin recommendations](https://github.com/fr-ser/grafana-sqlite-datasource/blob/main/docs/faq.md). Do NOT use `/var/lib/grafana/databases/` as it is not a standard Grafana directory.
 
 | Column | Type | Description | Example |
 |--------|------|-------------|---------|
@@ -82,7 +101,7 @@ grep CRON /var/log/syslog | tail -20
 
 - Uses `speedtest-cli` library
 - Stores timestamps as **Unix epoch in seconds** (compatible with Grafana)
-- Writes to: `/var/lib/grafana/databases/speedtest.db`
+- Writes to: `/var/lib/speed-check/data/speedtest.db`
 - Creates table automatically if it doesn't exist
 
 ## 📈 Grafana Queries
@@ -125,7 +144,7 @@ SELECT ping as value FROM results ORDER BY timestamp DESC LIMIT 1
 ### Check Data
 ```bash
 source .venv/bin/activate
-python -c "import sqlite3; conn = sqlite3.connect('/var/lib/grafana/databases/speedtest.db'); cursor = conn.cursor(); cursor.execute('SELECT count(*), min(timestamp), max(timestamp) FROM results'); print(cursor.fetchone()); conn.close()"
+python -c "import sqlite3; conn = sqlite3.connect('/var/lib/speed-check/data/speedtest.db'); cursor = conn.cursor(); cursor.execute('SELECT count(*), min(timestamp), max(timestamp) FROM results'); print(cursor.fetchone()); conn.close()"
 ```
 
 ### Manual Run
@@ -149,25 +168,26 @@ sudo systemctl restart grafana-server
 
 ### Backup Database
 ```bash
-cp /var/lib/grafana/databases/speedtest.db /var/lib/grafana/databases/speedtest.db.backup
+cp /var/lib/speed-check/data/speedtest.db /var/lib/speed-check/data/speedtest.db.backup
 ```
 
 ### Restore Database
 ```bash
-cp /var/lib/grafana/databases/speedtest.db.backup /var/lib/grafana/databases/speedtest.db
+cp /var/lib/speed-check/data/speedtest.db.backup /var/lib/speed-check/data/speedtest.db
 ```
 
 ### Clean Old Data
 ```bash
 # Delete data older than 30 days
 source .venv/bin/activate
-python -c "import sqlite3; from datetime import datetime, timedelta; conn = sqlite3.connect('/var/lib/grafana/databases/speedtest.db'); cursor = conn.cursor(); cutoff = int((datetime.now() - timedelta(days=30)).timestamp()); cursor.execute('DELETE FROM results WHERE timestamp < ?', (cutoff,)); conn.commit(); conn.close(); print('Old data cleaned')"
+python -c "import sqlite3; from datetime import datetime, timedelta; conn = sqlite3.connect('/var/lib/speed-check/data/speedtest.db'); cursor = conn.cursor(); cutoff = int((datetime.now() - timedelta(days=30)).timestamp()); cursor.execute('DELETE FROM results WHERE timestamp < ?', (cutoff,)); conn.commit(); conn.close(); print('Old data cleaned')"
 ```
 
 ## 📚 Resources
-- [speedtest-cli](https://github.com/sivel/speedtest-cli)
-- [Grafana](https://grafana.com/)
-- [frser-sqlite-datasource Plugin](https://github.com/fr-ser/grafana-sqlite-datasource)
+- [speedtest-cli](https://github.com/sivel/speedtest-cli) - Speed test library
+- [Grafana](https://grafana.com/) - Visualization platform
+- [frser-sqlite-datasource Plugin](https://github.com/fr-ser/grafana-sqlite-datasource) - Official SQLite plugin (recommended)
+- [SQLite Plugin FAQ](https://github.com/fr-ser/grafana-sqlite-datasource/blob/main/docs/faq.md) - Official setup guide
 
 ## 🔄 Changelog
 - **v1.0**: Initial setup with MySQL
