@@ -1,1 +1,1 @@
-speedtest-cli
+# No Python dependencies required - using Ookla Speedtest CLI binary

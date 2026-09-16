@@ -1,5 +1,6 @@
-from speedtest import Speedtest
 import sqlite3
+import subprocess
+import json
 from datetime import datetime
 
 # Initialize SQLite database (location accessible by Grafana)
@@ -20,17 +21,51 @@ cursor.execute('''
 ''')
 conn.commit()
 
-# Run speed test
-st = Speedtest()
-st.get_best_server()
-st.download()
-st.upload()
-results = st.results.dict()
+# Run speed test using Ookla CLI
+try:
+    # Run the test with JSON output
+    output = subprocess.check_output(
+        ['/usr/local/bin/speedtest', '-f', 'json'],
+        stderr=subprocess.STDOUT,
+        text=True
+    )
+    
+    # Parse JSON output - Ookla outputs multiple JSON objects, we need the result type
+    data = None
+    for line in output.strip().split('\n'):
+        if line.strip():
+            try:
+                parsed = json.loads(line)
+                if parsed.get('type') == 'result':
+                    data = parsed
+                    break
+            except json.JSONDecodeError:
+                continue
+    
+    if data is None:
+        print(f"No result data found in output")
+        exit(1)
+    
+    # Extract metrics
+    ping = data['ping']['latency']
+    download = data['download']['bandwidth'] * 8  # Convert bytes/sec to bits/sec
+    upload = data['upload']['bandwidth'] * 8      # Convert bytes/sec to bits/sec
+    timestamp = int(datetime.now().timestamp())
+    
+    # Insert results into the database
+    sql = "INSERT INTO results (timestamp, ping, download, upload) VALUES (?, ?, ?, ?)"
+    val = (timestamp, ping, download, upload)
+    cursor.execute(sql, val)
+    conn.commit()
+    
+    print("Speed test results saved successfully!")
+    
+except subprocess.CalledProcessError as e:
+    print(f"Error running speedtest (code {e.returncode}): {e.output}")
+    exit(1)
+except Exception as e:
+    print(f"Error: {e}")
+    exit(1)
 
-# Insert results into the database (store as Unix timestamp in SECONDS)
-sql = "INSERT INTO results (timestamp, ping, download, upload) VALUES (?, ?, ?, ?)"
-val = (int(datetime.now().timestamp()), results['ping'], results['download'], results['upload'])
-cursor.execute(sql, val)
-
-conn.commit()
+# Close database connection
 conn.close()
