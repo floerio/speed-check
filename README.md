@@ -14,7 +14,7 @@ A **Raspberry Pi** project that monitors internet connection speed and visualize
 - ✅ **SQLite database** storage (lightweight, no server required)
 - ✅ **Grafana dashboards** for beautiful visualization
 - ✅ **Real-time monitoring** of download, upload, and ping latency
-- ✅ **Zero external dependencies** (except speedtest-cli)
+- ✅ **Zero external dependencies** (except Ookla Speedtest CLI)
 
 ---
 
@@ -24,6 +24,7 @@ A **Raspberry Pi** project that monitors internet connection speed and visualize
 |-----------|---------|-------|
 | Raspberry Pi | 3B+ | ARMv7/ARM64 |
 | Python | 3.13 | Included in Raspberry Pi OS |
+| Ookla Speedtest CLI | 1.2.0+ | Official binary from Ookla |
 | Grafana | 13.2.0 | Installed via apt |
 | SQLite | 3 | Built into Python |
 
@@ -41,8 +42,15 @@ cd speed-check
 python -m venv .venv
 source .venv/bin/activate
 
-# Install dependencies
-pip install -r requirements.txt
+# Install Ookla Speedtest CLI (no Python dependencies needed)
+curl -Lo speedtest.tgz https://install.speedtest.net/app/cli/ookla-speedtest-1.2.0-linux-armel.tgz
+mkdir -p speedtest && tar -xzf speedtest.tgz -C speedtest
+sudo cp speedtest/speedtest /usr/local/bin/
+sudo chmod +x /usr/local/bin/speedtest
+rm -rf speedtest speedtest.tgz
+
+# Run once to accept license and GDPR terms
+speedtest
 ```
 
 ### 2️⃣ Run a Test

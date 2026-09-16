@@ -99,10 +99,12 @@ grep CRON /var/log/syslog | tail -20
 
 **File:** `speed_test.py`
 
-- Uses `speedtest-cli` library
+- Uses **Ookla Speedtest CLI** (official binary)
 - Stores timestamps as **Unix epoch in seconds** (compatible with Grafana)
+- Uses Ookla CLI with `-f json` flag
 - Writes to: `/opt/speed-check/data/speedtest.db`
 - Creates table automatically if it doesn't exist
+- **Note**: Results are NOT stored in Ookla accounts (local only)
 
 ## 📈 Grafana Queries
 
